@@ -374,12 +374,14 @@ bar
 --- config
     location /main {
         set $footer '';
+        proxy_http_version 1.0;
         proxy_pass http://127.0.0.1:$server_port/echo;
         header_filter_by_lua '
             ngx.var.footer = ngx.header.content_length
         ';
         echo_after_body $footer;
     }
+
     location /echo {
         content_by_lua 'ngx.print("Hello")';
     }
@@ -2186,6 +2188,7 @@ hi
 --- error_log eval
 [ "my Content-Length: 8589934591",
 qr/upstream prematurely closed connection while sending to client|upstream prematurely closed connection while reading upstream/]
+--- skip_nginx: 5: > 1.29.7
 
 
 

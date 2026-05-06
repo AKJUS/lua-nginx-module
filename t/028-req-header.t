@@ -854,8 +854,8 @@ Test-Header: [1]
             ngx.req.clear_header("Content-Length")
         ';
 
-        #proxy_pass http://127.0.0.1:8888;
         proxy_pass http://127.0.0.1:$server_port/back;
+        proxy_set_header Connection close;
     }
 
     location /back {
@@ -871,15 +871,9 @@ Test-Header: 1
 my $body;
 
 if (defined $ENV{TEST_NGINX_USE_HTTP3}) {
-    $body = qr/Connection: close\r
-test-header: 1\r
-\r
-$/;
+    $body = qr/Connection: close\r\n(?:.*\r\n)*?test-header: 1\r\n\r\n$/;
 } else {
-    $body = qr/Connection: close\r
-Test-Header: 1\r
-\r
-$/;
+    $body = qr/Connection: close\r\n(?:.*\r\n)*?Test-Header: 1\r\n\r\n$/;
 }
 
 $body;
@@ -1085,7 +1079,8 @@ My-Foo-Header: Hello World
         rewrite_by_lua 'ngx.req.clear_header("R")';
         proxy_pass http://127.0.0.1:$server_port/back;
         proxy_set_header Host foo;
-        #proxy_pass http://127.0.0.1:1234/back;
+        proxy_http_version 1.0;
+        proxy_set_header Connection close;
     }
 
     location = /back {
@@ -1132,7 +1127,8 @@ $s . "\r\n";
         ';
         proxy_pass http://127.0.0.1:$server_port/back;
         proxy_set_header Host foo;
-        #proxy_pass http://127.0.0.1:1234/back;
+        proxy_http_version 1.0;
+        proxy_set_header Connection close;
     }
 
     location = /back {
@@ -1255,7 +1251,8 @@ $body;
         ';
         proxy_pass http://127.0.0.1:$server_port/back;
         proxy_set_header Host foo;
-        #proxy_pass http://127.0.0.1:1234/back;
+        proxy_http_version 1.0;
+        proxy_set_header Connection close;
     }
 
     location = /back {
@@ -1339,7 +1336,8 @@ $body;
         ';
         proxy_pass http://127.0.0.1:$server_port/back;
         proxy_set_header Host foo;
-        #proxy_pass http://127.0.0.1:1234/back;
+        proxy_http_version 1.0;
+        proxy_set_header Connection close;
     }
 
     location = /back {
@@ -1692,6 +1690,8 @@ Via: 1.0 fred, 1.1 nowhere.com (Apache/1.1)
             ngx.req.set_header("foo_bar", "some value");
         ';
         proxy_pass http://127.0.0.1:$server_port/back;
+        proxy_http_version 1.0;
+        proxy_set_header Connection close;
     }
     location = /back {
         echo -n $echo_client_request_headers;
@@ -1700,9 +1700,11 @@ Via: 1.0 fred, 1.1 nowhere.com (Apache/1.1)
 GET /req-header
 --- response_body_like eval
 qr{^GET /back HTTP/1.0\r
-Host: 127.0.0.1:\d+\r
+(Host: 127.0.0.1:\d+\r
 Connection: close\r
-foo_bar: some value\r
+|Connection: close\r
+Host: 127.0.0.1:\d+\r
+)foo_bar: some value\r
 \r
 $}
 

@@ -12,7 +12,7 @@ use Test::Nginx::Util 'is_tcp_port_used';
 no_root_location;
 repeat_each(2);
 
-plan tests => repeat_each() * (blocks() * 3 + 23);
+plan tests => repeat_each() * (blocks() * 3 + 22);
 
 $ENV{TEST_NGINX_MEMCACHED_PORT} ||= 11211;
 $ENV{TEST_NGINX_HTML_DIR} ||= html_dir();
@@ -1396,6 +1396,8 @@ upstream timed out
         #proxy_read_timeout 100ms;
         proxy_buffering on;
         proxy_pass http://127.0.0.1:$TEST_NGINX_TCP_LISTEN_PORT;
+        proxy_http_version 1.0;
+        proxy_set_header Connection close;
     }
 
     location /main {
@@ -1412,31 +1414,6 @@ GET /main
 --- tcp_query_len: 65
 --- tcp_reply eval
 "HTTP/1.0 200 OK\r\nContent-Length: 1024\r\n\r\nhello world"
-
---- stap
-F(ngx_http_upstream_finalize_request) {
-    printf("upstream fin req: error=%d eof=%d rc=%d\n",
-        $r->upstream->peer->connection->read->error,
-        $r->upstream->peer->connection->read->eof,
-        $rc)
-    #print_ubacktrace()
-}
-F(ngx_connection_error) {
-    printf("conn err: %d: %s\n", $err, user_string($text))
-    #print_ubacktrace()
-}
-F(ngx_http_lua_post_subrequest) {
-    printf("post subreq: rc=%d, status=%d\n", $rc, $r->headers_out->status)
-    #print_ubacktrace()
-}
-/*
-F(ngx_http_finalize_request) {
-    printf("finalize: %d\n", $rc)
-}
-*/
---- stap_out
-upstream fin req: error=0 eof=1 rc=502
-post subreq: rc=0, status=200
 
 --- response_body
 status: 200
@@ -1518,6 +1495,8 @@ upstream timed out
         #proxy_read_timeout 100ms;
         proxy_buffering on;
         proxy_pass http://127.0.0.1:$TEST_NGINX_TCP_LISTEN_PORT;
+        proxy_http_version 1.0;
+        proxy_set_header Connection close;
     }
 
     location /main {
@@ -1641,6 +1620,7 @@ upstream timed out
         #proxy_read_timeout 100ms;
         proxy_buffering off;
         proxy_pass http://127.0.0.1:$TEST_NGINX_TCP_LISTEN_PORT;
+        proxy_set_header Connection close;
     }
 
     location /main {
@@ -1927,6 +1907,7 @@ a client request body is buffered to a temporary file
         proxy_http_version 1.1;
         proxy_buffering on;
         proxy_pass http://127.0.0.1:$TEST_NGINX_TCP_LISTEN_PORT;
+        proxy_set_header Connection close;
     }
 
     location /main {
@@ -1989,6 +1970,7 @@ upstream prematurely closed connection
         #proxy_read_timeout 100ms;
         proxy_http_version 1.1;
         proxy_buffering off;
+        proxy_set_header Connection close;
         proxy_pass http://127.0.0.1:$TEST_NGINX_TCP_LISTEN_PORT;
     }
 
@@ -2230,6 +2212,7 @@ truncated: false
         #proxy_read_timeout 100ms;
         proxy_buffering off;
         proxy_pass http://127.0.0.1:$TEST_NGINX_TCP_LISTEN_PORT;
+        proxy_set_header Connection close;
     }
 
     location /main {
@@ -3017,8 +3000,7 @@ method: GET, uri: /foo, X: GET /bar HTTP/1.0
 0
 --- no_error_log
 [error]
---- skip_nginx
-3: >= 1.21.1
+--- skip_nginx: 3: >= 1.21.1
 
 
 

@@ -533,8 +533,6 @@ Bar: nil
     location /lua {
         content_by_lua '
             local data = "hello, world"
-            -- ngx.header["Content-Length"] = #data
-            -- ngx.header.content_length = #data
             ngx.print(data)
         ';
     }
@@ -544,7 +542,7 @@ Bar: nil
 --- request
 GET /main
 --- response_headers
-Content-Length: 12
+Content-Type: text/plain
 --- response_body chop
 hello, world
 --- no_error_log

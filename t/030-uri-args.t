@@ -530,6 +530,8 @@ rewrite: err: attempt to use zero-length uri
             ngx.req.set_uri("/bar")
         ';
         proxy_pass http://127.0.0.1:$TEST_NGINX_SERVER_PORT;
+        proxy_http_version 1.0;
+        proxy_set_header Connection close;
     }
 --- request
     GET /foo?world
@@ -550,6 +552,8 @@ HTTP/1.0 hello
             ngx.req.set_uri_args({["ca t"] = "%"})
         ';
         proxy_pass http://127.0.0.1:$TEST_NGINX_SERVER_PORT;
+        proxy_http_version 1.0;
+        proxy_set_header Connection close;
     }
 --- request
     GET /foo?world
@@ -1102,6 +1106,8 @@ CORE::join("", @k);
             ngx.req.set_uri("/bar")
         ';
         proxy_pass http://127.0.0.1:$TEST_NGINX_SERVER_PORT;
+        proxy_http_version 1.0;
+        proxy_set_header Connection close;
     }
 --- request
     GET /foo?world
@@ -1508,6 +1514,8 @@ GET /lua
             ngx.req.set_uri("/bar")
         ';
         proxy_pass http://127.0.0.1:$TEST_NGINX_SERVER_PORT;
+        proxy_http_version 1.0;
+        proxy_set_header Connection close;
     }
 --- request
     GET /foo?world
@@ -1534,6 +1542,8 @@ GET /lua
             ngx.req.set_uri("/bar")
         ';
         proxy_pass http://127.0.0.1:$TEST_NGINX_SERVER_PORT;
+        proxy_http_version 1.0;
+        proxy_set_header Connection close;
     }
 --- request
     GET /foo?world
