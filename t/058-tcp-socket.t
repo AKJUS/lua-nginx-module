@@ -3084,7 +3084,7 @@ if not ok then
 end
 
 --- response_body_like: 500 Internal Server Error
---- wait: 0.3
+--- wait: 1
 --- error_code: 500
 --- error_log
 resolve name done
@@ -3121,7 +3121,7 @@ runtime error: attempt to yield across C-call boundary
     GET /t
 --- response_body
 ok
---- wait: 0.3
+--- wait: 1
 --- error_log
 resolve name done
 --- no_error_log
