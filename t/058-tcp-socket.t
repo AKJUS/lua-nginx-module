@@ -4517,7 +4517,8 @@ reused times: 3, setkeepalive err: closed
             local sock = assert(ngx.req.socket(true))
             local data
             while true do
-                data = assert(sock:receive())
+                data = sock:receive()
+                if not data then break end
                 assert(data == "hello")
             end
         }
