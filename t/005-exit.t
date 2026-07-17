@@ -805,6 +805,7 @@ GET /t
 curl: (95) HTTP/3 stream 0 reset by server (error 0x102 INTERNAL_ERROR)
 
 
+
 === TEST 29: refuses NGX_AGAIN
 --- config
     location = /t {
