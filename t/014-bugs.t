@@ -107,19 +107,19 @@ GET /report/listBidwordPrices4lzExtra.htm?words=123,156,2532
         #echo $memc_value;
     }
     location = /echo {
-        echo_location '/memc?c=get&k=foo';
-        echo_location '/memc?c=set&k=foo&v=hello';
-        echo_location '/memc?c=get&k=foo';
+        echo_location '/memc?c=get&k=014-bugs-3';
+        echo_location '/memc?c=set&k=014-bugs-3&v=hello';
+        echo_location '/memc?c=get&k=014-bugs-3';
     }
     location = /main {
         content_by_lua '
-            local res = ngx.location.capture("/memc?c=get&k=foo&v=")
+            local res = ngx.location.capture("/memc?c=get&k=014-bugs-3&v=")
             ngx.say("1: ", res.body)
 
-            res = ngx.location.capture("/memc?c=set&k=foo&v=bar");
+            res = ngx.location.capture("/memc?c=set&k=014-bugs-3&v=bar");
             ngx.say("2: ", res.body);
 
-            res = ngx.location.capture("/memc?c=get&k=foo")
+            res = ngx.location.capture("/memc?c=get&k=014-bugs-3")
             ngx.say("3: ", res.body);
         ';
     }
@@ -872,16 +872,25 @@ ok
 
 === TEST 37: resolving names with a trailing dot
 --- http_config eval
-    "lua_package_path '$::HtmlDir/?.lua;./?.lua;;';"
+    "lua_package_path '$::HtmlDir/?.lua;./?.lua;;';
+    server {
+        listen 127.0.0.1:\$TEST_NGINX_RAND_PORT_1;
+
+        location = /t {
+            echo 'resolved trailing dot';
+        }
+    }
+"
 --- config
     location /t {
         resolver $TEST_NGINX_RESOLVER ipv6=off;
-        set $myhost 'agentzh.org.';
-        proxy_pass http://$myhost/misc/.vimrc;
+        set $myhost 'localhost.';
+        proxy_pass http://$myhost:$TEST_NGINX_RAND_PORT_1/t;
     }
 --- request
 GET /t
---- response_body_like: An example for a vimrc file
+--- response_body
+resolved trailing dot
 --- no_error_log
 [error]
 --- timeout: 10

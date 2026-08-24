@@ -7,16 +7,9 @@ use Test::Nginx::Socket::Lua;
 
 repeat_each(2);
 
-sub resolve($$);
-
 plan tests => repeat_each() * (blocks() * 2);
 
-$ENV{TEST_NGINX_HTML_DIR} ||= html_dir();
-$ENV{TEST_NGINX_MEMCACHED_PORT} ||= 11211;
-$ENV{TEST_NGINX_RESOLVER} ||= '8.8.8.8';
-$ENV{TEST_NGINX_SERVER_SSL_PORT} ||= 12345;
 $ENV{TEST_NGINX_CERT_DIR} ||= dirname(realpath(abs_path(__FILE__)));
-$ENV{TEST_NGINX_OPENRESTY_ORG_IP} ||= resolve("openresty.org", $ENV{TEST_NGINX_RESOLVER});
 
 #log_level 'warn';
 log_level 'debug';
@@ -33,40 +26,37 @@ sub read_file {
     $cert;
 }
 
-sub resolve ($$) {
-    my ($domain, $resolver) = @_;
-    my $ips = qx/dig \@$resolver +short $domain/;
-
-    my $exit_code = $? >> 8;
-    if (!$ips || $exit_code != 0) {
-        die "failed to resolve '$domain' using '$resolver' as resolver";
-    }
-
-    my ($ip) = split /\n/, $ips;
-    return $ip;
-}
-
-our $DSTRootCertificate = read_file("t/cert/dst-ca.crt");
-our $EquifaxRootCertificate = read_file("t/cert/equifax.crt");
 our $TestCertificate = read_file("t/cert/test.crt");
 our $TestCertificateKey = read_file("t/cert/test.key");
-our $TestCRL = read_file("t/cert/test.crl");
 
 run_tests();
 
 __DATA__
 
-=== TEST 1: www.google.com
-access the public network is unstable, need a bigger timeout value.
---- quic_max_idle_timeout: 3
+=== TEST 1: get SSL session
+--- http_config
+    server {
+        listen              $TEST_NGINX_RAND_PORT_1 ssl;
+        server_name         test.com;
+        ssl_certificate     $TEST_NGINX_CERT_DIR/cert/test.crt;
+        ssl_certificate_key $TEST_NGINX_CERT_DIR/cert/test.key;
+        ssl_protocols       TLSv1.2;
+        ssl_session_cache   shared:SSL:1m;
+
+        location / {
+            content_by_lua_block {
+                ngx.exit(201)
+            }
+        }
+    }
 --- config
     server_tokens off;
-    resolver $TEST_NGINX_RESOLVER ipv6=off;
+    lua_ssl_protocols TLSv1.2;
     location /t {
         content_by_lua_block {
             local sock = ngx.socket.tcp()
             sock:settimeout(2000)
-            local ok, err = sock:connect("www.google.com", 443)
+            local ok, err = sock:connect("127.0.0.1", $TEST_NGINX_RAND_PORT_1)
             if not ok then
                 ngx.say("failed to connect: ", err)
                 return
@@ -82,7 +72,7 @@ access the public network is unstable, need a bigger timeout value.
 
             ngx.say("ssl handshake: ", type(sess))
 
-            local req = "GET / HTTP/1.1\r\nHost: www.google.com\r\nConnection: close\r\n\r\n"
+            local req = "GET / HTTP/1.1\r\nHost: test.com\r\nConnection: close\r\n\r\n"
             local bytes, err = sock:send(req)
             if not bytes then
                 ngx.say("failed to send http request: ", err)
@@ -116,8 +106,8 @@ GET /t
 --- response_body_like chop
 \Aconnected: 1
 ssl handshake: cdata
-sent http request: 59 bytes.
-received: HTTP/1.1 (?:200 OK|302 Found)
+sent http request: 53 bytes.
+received: HTTP/1.1 201 Created
 (?:ssl session: cdata|failed to get SSL session: not resumable)
 close: 1 nil
 \z
@@ -128,7 +118,7 @@ close: 1 nil
 === TEST 2: connect to nginx server
 --- http_config
     server {
-        listen $TEST_NGINX_SERVER_SSL_PORT ssl;
+        listen $TEST_NGINX_RAND_PORT_1 ssl;
         server_name   test.com;
         ssl_certificate ../html/test.crt;
         ssl_certificate_key ../html/test.key;
@@ -142,7 +132,6 @@ close: 1 nil
 --- config
     # fixme: getsslsession doesn't work with BoringSSL TLSv1.3 case, temporarily disable TLSv1.3 for this test.
     lua_ssl_protocols TLSv1.2;
-    resolver $TEST_NGINX_RESOLVER ipv6=off;
     location /t {
         content_by_lua_block {
             local ssl_session
@@ -150,7 +139,7 @@ close: 1 nil
             local function http_req()
                 local sock = ngx.socket.tcp()
                 sock:settimeout(2000)
-                local ok, err = sock:connect("127.0.0.1", $TEST_NGINX_SERVER_SSL_PORT)
+                local ok, err = sock:connect("127.0.0.1", $TEST_NGINX_RAND_PORT_1)
                 if not ok then
                     ngx.say("failed to connect: ", err)
                     return

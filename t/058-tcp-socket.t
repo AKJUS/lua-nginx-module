@@ -209,8 +209,8 @@ attempt to send data on a closed socket:
     location /t {
         content_by_lua '
             local sock = ngx.socket.tcp()
-            local port = 80
-            local ok, err = sock:connect("agentzh.org", port)
+            local port = $TEST_NGINX_SERVER_PORT
+            local ok, err = sock:connect("localhost", port)
             if not ok then
                 ngx.say("failed to connect: ", err)
                 return
@@ -218,7 +218,7 @@ attempt to send data on a closed socket:
 
             ngx.say("connected: ", ok)
 
-            local req = "GET / HTTP/1.0\\r\\nHost: agentzh.org\\r\\nConnection: close\\r\\n\\r\\n"
+            local req = "GET /foo HTTP/1.0\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n"
             -- req = "OK"
 
             local bytes, err = sock:send(req)
@@ -247,11 +247,16 @@ attempt to send data on a closed socket:
         ';
     }
 
+    location /foo {
+        content_by_lua 'ngx.say("foo")';
+        more_clear_headers Date;
+    }
+
 --- request
 GET /t
 --- response_body_like
 connected: 1
-request sent: 56
+request sent: 57
 first line received: HTTP\/1\.1 200 OK
 second line received: (?:Date|Server): .*?
 --- no_error_log
@@ -3107,7 +3112,7 @@ runtime error: attempt to yield across C-call boundary
             end
             local function err()
                 local sock = ngx.socket.tcp()
-                local ok, err = sock:connect("agentzh.org", 12345)
+                local ok, err = sock:connect("localhost", $TEST_NGINX_RAND_PORT_1)
                 if not ok then
                     ngx.log(ngx.ERR, "failed to connect: ", err)
                     return
@@ -3121,7 +3126,7 @@ runtime error: attempt to yield across C-call boundary
     GET /t
 --- response_body
 ok
---- wait: 1
+--- wait: 3
 --- error_log
 resolve name done
 --- no_error_log
